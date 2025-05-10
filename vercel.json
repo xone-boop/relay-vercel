@@ -1,0 +1,9 @@
+{
+  "routes": [
+    {
+      "src": "/api/relay",
+      "methods": ["POST"],
+      "dest": "/api/relay.js"
+    }
+  ]
+}
