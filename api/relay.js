@@ -3,6 +3,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  if (req.body.token !== process.env.SECRET_TOKEN) {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+
   try {
     const response = await fetch("https://your-ngrok-url.ngrok-free.app/execute-gpt-directive", {
       method: "POST",
