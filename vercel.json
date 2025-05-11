@@ -1,9 +1,8 @@
 {
+  "version": 2,
   "routes": [
-    {
-      "src": "/api/relay",
-      "methods": ["POST"],
-      "dest": "/api/relay.js"
-    }
+    { "src": "/execute", "dest": "/api/relay.js", "methods": ["POST"] },
+    { "src": "/feedback", "dest": "/api/relay.js", "methods": ["POST"] },
+    { "src": "/last-feedback", "dest": "/api/relay.js", "methods": ["GET"] }
   ]
 }
