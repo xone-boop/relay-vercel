@@ -1,4 +1,3 @@
-
 import fs from 'fs/promises';
 
 const DEFAULT_TARGET = process.env.FASTAPI_URL;
@@ -11,7 +10,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  if (method === 'GET' && url.endsWith('/relay/last-feedback')) {
+  if (method === 'GET' && url.endsWith('/last-feedback')) {
     try {
       const content = await fs.readFile('/tmp/feedback_last.json', 'utf8');
       return res.status(200).json(JSON.parse(content));
@@ -27,13 +26,13 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: "Unauthorized token" });
     }
 
-    if (url.endsWith('/relay/feedback')) {
+    if (url.endsWith('/feedback')) {
       await fs.writeFile('/tmp/feedback_last.json', JSON.stringify(req.body, null, 2));
       await fs.writeFile(`/tmp/feedback_${Date.now()}.json`, JSON.stringify(req.body, null, 2));
       return res.status(200).json({ status: "Feedback saved", echo: req.body });
     }
 
-    if (url.endsWith('/relay/execute') || url.endsWith('/api/relay')) {
+    if (url.endsWith('/execute') || url.endsWith('/api/relay')) {
       if (!filename || !code) {
         return res.status(400).json({ error: "Missing filename or code." });
       }
