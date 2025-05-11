@@ -1,27 +1,65 @@
+
+import fs from 'fs/promises';
+
+const TARGET_URL = process.env.FASTAPI_URL;
+const EXPECTED_TOKEN = process.env.SECRET_TOKEN;
+
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
+  const { url, method } = req;
+
+  if (!['POST', 'GET'].includes(method)) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Cek token
-  if (req.body.token !== process.env.SECRET_TOKEN) {
-    return res.status(403).json({ error: "Unauthorized" });
+  if (method === 'GET' && url.endsWith('/relay/last-feedback')) {
+    try {
+      const content = await fs.readFile('/tmp/feedback_last.json', 'utf8');
+      return res.status(200).json(JSON.parse(content));
+    } catch {
+      return res.status(404).json({ error: "No feedback found" });
+    }
   }
 
-  if (!req.body.target_url) {
-    return res.status(400).json({ error: "Missing target_url" });
+  if (method === 'POST') {
+    const { token, filename, code, run, debug } = req.body;
+
+    if (token !== EXPECTED_TOKEN) {
+      return res.status(403).json({ error: "Unauthorized token" });
+    }
+
+    if (url.endsWith('/relay/feedback')) {
+      await fs.writeFile('/tmp/feedback_last.json', JSON.stringify(req.body, null, 2));
+      await fs.writeFile(`/tmp/feedback_${Date.now()}.json`, JSON.stringify(req.body, null, 2));
+      return res.status(200).json({ status: "Feedback saved", echo: req.body });
+    }
+
+    if (url.endsWith('/relay/execute')) {
+      if (!filename || !code) {
+        return res.status(400).json({ error: "Missing filename or code." });
+      }
+
+      const directive = { filename, code, run, token };
+
+      if (debug === true) {
+        await fs.writeFile(`/tmp/debug_${Date.now()}.json`, JSON.stringify(directive, null, 2));
+        return res.status(200).json({ debug: "Simulasi simpan directive", directive });
+      }
+
+      try {
+        const response = await fetch(TARGET_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(directive)
+        });
+
+        const result = await response.json();
+        await fs.writeFile(`/tmp/log_${Date.now()}.json`, JSON.stringify({ directive, result }, null, 2));
+        return res.status(200).json({ status: "Executed", result });
+      } catch (err) {
+        return res.status(500).json({ error: "Gagal relay", detail: err.message });
+      }
+    }
   }
 
-  try {
-    const response = await fetch(req.body.target_url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req.body)
-    });
-
-    const result = await response.json();
-    return res.status(200).json(result);
-  } catch (error) {
-    return res.status(500).json({ error: "Failed to relay request", detail: error.toString() });
-  }
+  return res.status(400).json({ error: "Unknown route" });
 }
