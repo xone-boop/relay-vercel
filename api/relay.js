@@ -1,7 +1,7 @@
 
 import fs from 'fs/promises';
 
-const TARGET_URL = process.env.FASTAPI_URL;
+const DEFAULT_TARGET = process.env.FASTAPI_URL;
 const EXPECTED_TOKEN = process.env.SECRET_TOKEN;
 
 export default async function handler(req, res) {
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   if (method === 'POST') {
-    const { token, filename, code, run, debug } = req.body;
+    const { token, filename, code, run, debug, target_url } = req.body;
 
     if (token !== EXPECTED_TOKEN) {
       return res.status(403).json({ error: "Unauthorized token" });
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ status: "Feedback saved", echo: req.body });
     }
 
-    if (url.endsWith('/relay/execute')) {
+    if (url.endsWith('/relay/execute') || url.endsWith('/api/relay')) {
       if (!filename || !code) {
         return res.status(400).json({ error: "Missing filename or code." });
       }
@@ -46,7 +46,8 @@ export default async function handler(req, res) {
       }
 
       try {
-        const response = await fetch(TARGET_URL, {
+        const actualTarget = target_url || DEFAULT_TARGET;
+        const response = await fetch(actualTarget, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(directive)
